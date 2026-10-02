@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="chat-page wa-chat-container">
+  <!-- WhatsApp Style Chat Header -->
+  <div class="wa-chat-header">
+    <div class="wa-header-left">
+      <a href="{{ url_for('chats') }}" class="wa-back-btn" title="Back to Chats">←</a>
+      <div class="avatar small wa-avatar">{{ (other_name or '?')[0]|upper }}</div>
+      <div class="wa-header-info">
+        <h2 class="wa-contact-name">{{ other_name }}</h2>
+        <p class="wa-subtitle">
+          <span class="wa-online-dot"></span> In-app chat • 
+          <a href="{{ url_for('product', pid=conversation['product_id']) }}" class="wa-product-link">{{ conversation['title'] }}</a>
+        </p>
+      </div>
+    </div>
+    <div class="wa-header-actions">
+      <a href="{{ url_for('call_page', uid=other_id) }}" class="wa-action-btn wa-call-btn" title="Start voice call">
+        📞 <span class="btn-text">Voice Call</span>
+      </a>
+      <a href="{{ url_for('product', pid=conversation['product_id']) }}" class="wa-action-btn wa-view-btn" title="View product listing">
+        📦 <span class="btn-text">Item</span>
+      </a>
+      <a href="{{ url_for('new_complaint', accused_id=other_id, product_id=conversation['product_id']) }}" class="wa-action-btn wa-report-btn" title="Report user">
+        ⚠️
+      </a>
+    </div>
+  </div>
+
+  <!-- WhatsApp Style Messages Area -->
+  <div id="chatbox" class="wa-chatbox">
+    <div class="wa-encryption-banner">
+      🔒 End-to-end user communication on Loopify. Be respectful and protect your personal info.
+    </div>
+    <div id="messages-list" class="wa-messages-list">
+      <!-- Dynamically filled by JavaScript -->
+      <div class="wa-loading">Loading conversation...</div>
+    </div>
+  </div>
+
+  <!-- WhatsApp Style Input Bar -->
+  <form id="chatform" class="wa-chatform" method="post" action="{{ url_for('chat', cid=conversation['id']) }}">
+    <div class="wa-input-wrapper">
+      <input
+        type="text"
+        id="message"
+        name="message"
+        placeholder="Type a message..."
+        autocomplete="off"
+        required
+      />
+    </div>
+    <button type="submit" id="sendbtn" class="wa-send-btn" title="Send message">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+      </svg>
+    </button>
+  </form>
+</div>
+
+<script>
+  const cid = {{ conversation['id'] }};
+  const myId = {{ current_user['id'] }};
+  const otherId = {{ other_id }};
+  const otherName = {{ other_name|tojson }};
+  const chatbox = document.getElementById('chatbox');
+  const messagesList = document.getElementById('messages-list');
+  const chatform = document.getElementById('chatform');
+  const messageInput = document.getElementById('message');
+  const sendBtn = document.getElementById('sendbtn');
+
+  let knownMessageCount = -1;
+  let isSubmitting = false;
+
+  function formatTime(isoString) {
+    if (!isoString) return '';
+    try {
+      const d = new Date(isoString.replace(' ', 'T') + (isoString.includes('Z') ? '' : 'Z'));
+      if (isNaN(d.getTime())) {
+        const parts = isoString.split(' ');
+        return parts.length > 1 ? parts[1].substring(0, 5) : isoString;
+      }
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function cleanMessageText(raw) {
+    if (!raw) return '';
+    // If it's old prototype ciphertext with IV.CT format, show cleanly
+    if (typeof raw === 'string' && raw.includes('.') && raw.length > 30 && !raw.includes(' ')) {
+      return 'Encrypted note (previous session)';
+    }
+    return raw;
+  }
+
+  function scrollToBottom(smooth = false) {
+    chatbox.scrollTo({
+      top: chatbox.scrollHeight,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+  }
+
+  async function loadMessages(initial = false) {
+    try {
+      const res = await fetch('/api/messages/' + cid, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to load messages');
+      const data = await res.json();
+
+      if (data.length === knownMessageCount) {
+        return; // No new messages
+      }
+
+      const shouldScroll = initial || (chatbox.scrollHeight - chatbox.scrollTop - chatbox.clientHeight < 140);
+      knownMessageCount = data.length;
+
+      if (data.length === 0) {
+        messagesList.innerHTML = `
+          <div class="wa-empty-chat">
+            <div class="wa-empty-icon">💬</div>
+            <p><strong>Say hello to ${otherName}!</strong></p>
+            <p class="muted">Agree on meeting location, ask questions about the item, or negotiate safely.</p>
+          </div>
+        `;
+        return;
+      }
+
+      messagesList.innerHTML = '';
+      data.forEach(m => {
+        const isMine = m.sender_id === myId;
+        const bubble = document.createElement('div');
+        bubble.className = 'wa-bubble ' + (isMine ? 'wa-mine' : 'wa-theirs');
+
+        const content = document.createElement('div');
+        content.className = 'wa-bubble-content';
+
+        if (!isMine) {
+          const senderLabel = document.createElement('div');
+          senderLabel.className = 'wa-sender-label';
+          senderLabel.textContent = m.sender_name || otherName;
+          content.appendChild(senderLabel);
+        }
+
+        const textDiv = document.createElement('div');
+        textDiv.className = 'wa-message-text';
+        textDiv.textContent = cleanMessageText(m.text || m.ciphertext);
+        content.appendChild(textDiv);
+
+        const footer = document.createElement('div');
+        footer.className = 'wa-bubble-footer';
+
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'wa-time';
+        timeSpan.textContent = formatTime(m.created_at);
+        footer.appendChild(timeSpan);
+
+        if (isMine) {
+          const checkSpan = document.createElement('span');
+          checkSpan.className = 'wa-checks';
+          checkSpan.innerHTML = '&#10003;&#10003;';
+          checkSpan.title = 'Sent';
+          footer.appendChild(checkSpan);
+
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'wa-del-btn';
+          delBtn.title = 'Delete message';
+          delBtn.innerHTML = '&times;';
+          delBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            if (!confirm('Delete this message?')) return;
+            try {
+              const dres = await fetch('/api/messages/' + cid + '/' + m.id, { method: 'DELETE' });
+              if (dres.ok) {
+                knownMessageCount = -1;
+                loadMessages();
+              } else {
+                alert('Could not delete message');
+              }
+            } catch (err) {
+              alert('Error deleting message');
+            }
+          });
+          footer.appendChild(delBtn);
+        }
+
+        content.appendChild(footer);
+        bubble.appendChild(content);
+        messagesList.appendChild(bubble);
+      });
+
+      if (shouldScroll) {
+        scrollToBottom(initial ? false : true);
+      }
+    } catch (err) {
+      console.error('Chat load error:', err);
+      if (initial) {
+        messagesList.innerHTML = '<div class="wa-empty-chat"><p class="notice">Could not load messages. Refresh to retry.</p></div>';
+      }
+    }
+  }
+
+  chatform.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = messageInput.value.trim();
+    if (!text || isSubmitting) return;
+
+    isSubmitting = true;
+    sendBtn.disabled = true;
+
+    try {
+      const res = await fetch('/api/messages/' + cid, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error || 'Failed to send message.');
+        return;
+      }
+
+      messageInput.value = '';
+      messageInput.focus();
+      await loadMessages();
+      scrollToBottom(true);
+    } catch (err) {
+      console.error('Send error:', err);
+      alert('Network error sending message.');
+    } finally {
+      isSubmitting = false;
+      sendBtn.disabled = false;
+    }
+  });
+
+  // Enter to send
+  messageInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      chatform.dispatchEvent(new Event('submit', { cancelable: true }));
+    }
+  });
+
+  // Initial load and polling every 1.5 seconds
+  loadMessages(true);
+  setInterval(() => loadMessages(false), 1500);
+</script>
+{% endblock %}

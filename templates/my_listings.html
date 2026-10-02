@@ -1,0 +1,54 @@
+{% extends 'base.html' %}{% block content %}
+<section class="hero compact-hero">
+  <div>
+    <p class="eyebrow">ACCOUNT</p>
+    <h1>My Listings</h1>
+    <p>Manage your posted items and items sold through buyer chats.</p>
+  </div>
+  <div class="row">
+    <a class="secondary" href="{{url_for('reservations')}}">View Reservations</a>
+    <a class="primary" href="{{url_for('sell')}}">+ Add Item</a>
+  </div>
+</section>
+
+{% set pending_count = (incoming_reservations|selectattr('status', 'equalto', 'PENDING')|list|length) if incoming_reservations else 0 %}
+{% if pending_count > 0 %}
+<div class="flash" style="background: #e0f2fe; color: #0369a1; border-color: #bae6fd; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+  <span>🔔 You have <strong>{{ pending_count }}</strong> pending reservation request(s) waiting for your response!</span>
+  <a class="primary" href="{{ url_for('reservations') }}" style="font-size: 0.85rem; padding: 6px 14px;">Review Requests</a>
+</div>
+{% endif %}
+
+<div class="grid">
+  {% for p in products %}
+    <article class="product-card">
+      {% if p['photo'] %}<img class="product-photo" src="{{url_for('static',filename='uploads/'+p['photo'])}}">{% else %}<div class="placeholder">♻</div>{% endif %}
+      <div class="card-body">
+        <div class="meta-row">
+          <span class="chip">{{p['category']}}</span>
+          {% if p['price']==0 %}<span class="chip chip-free">FREE</span>{% endif %}
+        </div>
+        <h3>{{p['title']}}</h3>
+        <div class="card-row">
+          <span class="rating">★ {{'%.1f'|format(p['avg_rating'])}}</span>
+          <span class="stock {% if p['quantity']>0 %}in{% else %}out{% endif %}">{% if p['quantity']>0 %}Available{% else %}Sold out{% endif %}</span>
+        </div>
+        <div class="price-row">
+          <div class="price">{% if p['price']==0 %}FREE{% else %}₹{{p['price']}}{% endif %}</div>
+          <a class="details" href="{{url_for('product',pid=p['id'])}}">Open</a>
+        </div>
+        <div class="owner-actions inline-actions">
+          <form method="post" action="{{url_for('mark_product_sold',pid=p['id'])}}">
+            <button class="primary" {% if p['quantity']<=0 %}disabled{% endif %}>Mark sold</button>
+          </form>
+          <form method="post" action="{{url_for('delete_product',pid=p['id'])}}" onsubmit="return confirm('Delete this listing?');">
+            <button class="danger">Delete</button>
+          </form>
+        </div>
+      </div>
+    </article>
+  {% else %}
+    <div class="empty">You have not listed any items yet.</div>
+  {% endfor %}
+</div>
+{% endblock %}

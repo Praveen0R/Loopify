@@ -1,0 +1,68 @@
+{% extends 'base.html' %}{% block content %}
+<div class="profile-shell">
+  <div class="profile-card">
+    <div class="avatar">{{user['name'][0]|upper}}</div>
+    <div class="profile-main">
+      <h1>{{user['name']}}</h1>
+      <p class="muted">
+        {{user['department'] or ''}} {% if user['semester'] %}• Semester
+        {{user['semester']}}{% endif %}
+      </p>
+      <p class="rating">
+        ★ {{'%.1f'|format(user['avg_rating'])}} ({{user['rating_count']}})
+      </p>
+    </div>
+    {% if current_user and current_user['id']==user['id'] %}
+    <a class="primary" href="{{url_for('edit_profile',uid=user['id'])}}"
+      >Edit profile</a
+    >
+    {% elif current_user %}
+    <div class="profile-actions">
+      {% if is_blocked %}
+      <form method="post" action="{{url_for('unblock_user',uid=user['id'])}}">
+        <button class="primary">Unblock User</button>
+      </form>
+      {% else %}
+      <a class="secondary" href="{{url_for('call_page',uid=user['id'])}}">📞 Call</a>
+      <form method="post" action="{{url_for('block_user',uid=user['id'])}}">
+        <button class="secondary">Block User</button>
+      </form>
+      {% endif %}
+      <a
+        class="danger-link"
+        href="{{url_for('new_complaint',accused_id=user['id'])}}"
+        >Report User</a
+      >
+    </div>
+    {% endif %}
+  </div>
+
+  <h2>Listings</h2>
+  <div class="grid">
+    {% for p in products %}
+    <article class="product-card compact">
+      {% if p['photo'] %}<img
+        class="product-photo"
+        src="{{url_for('static',filename='uploads/'+p['photo'])}}"
+      />{% else %}
+      <div class="placeholder">♻</div>
+      {% endif %}
+      <div class="card-body">
+        <h3>{{p['title']}}</h3>
+        <div class="price-row">
+          <div class="price">
+            {% if p['price']==0 %}FREE{% else %}₹{{p['price']}}{% endif %}
+          </div>
+          <a class="details" href="{{url_for('product',pid=p['id'])}}">Open</a>
+        </div>
+        <div class="stock {% if p['quantity']>0 %}in{% else %}out{% endif %}">
+          {% if p['quantity']>0 %}Available{% else %}Sold out{% endif %}
+        </div>
+      </div>
+    </article>
+    {% else %}
+    <div class="empty">No listings from this user yet.</div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

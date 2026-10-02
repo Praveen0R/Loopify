@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="form-card">
+  <h1>Raise a Complaint</h1>
+  <p class="muted">
+    Use this form to report scams, harassment, unwanted contact, fake listings, or policy violations. The Complaint Management Team will investigate.
+  </p>
+
+  {% if accused_user %}
+  <div class="notice-box" style="margin-bottom: 20px; background: var(--bg-soft); border-left: 4px solid var(--primary); padding: 12px 16px; border-radius: 8px;">
+    <p style="margin: 0; color: var(--text);">
+      <strong>Accused User:</strong> {{ accused_user['name'] }} {% if accused_user['department'] %}({{ accused_user['department'] }}){% endif %}
+    </p>
+    {% if product %}
+    <p style="margin: 4px 0 0; color: var(--muted); font-size: 0.9rem;">
+      <strong>Related Item:</strong> {{ product['title'] }}
+    </p>
+    {% endif %}
+  </div>
+
+  <form method="post" class="form">
+    <input type="hidden" name="accused_id" value="{{ accused_id }}">
+    <input type="hidden" name="product_id" value="{{ product_id or '' }}">
+    <label>Category
+      <select name="category" required>
+        <option value="SCAM / FRAUD">SCAM / FRAUD</option>
+        <option value="HARASSMENT">HARASSMENT</option>
+        <option value="UNWANTED CONTACT">UNWANTED CONTACT</option>
+        <option value="FAKE LISTING">FAKE LISTING</option>
+        <option value="INAPPROPRIATE CONTENT">INAPPROPRIATE CONTENT</option>
+        <option value="OTHER">OTHER</option>
+      </select>
+    </label>
+    <label>Details
+      <textarea name="description" rows="6" required placeholder="Explain what happened clearly and factually."></textarea>
+    </label>
+    <div class="row">
+      <button class="primary" type="submit">Submit Complaint</button>
+      <a class="secondary" href="javascript:history.back()">Cancel</a>
+    </div>
+  </form>
+  {% else %}
+  <div class="empty">
+    <p>No user selected to report. Please use the <strong>Report</strong> button on a user profile or product page.</p>
+    <a class="primary" href="{{ url_for('index') }}">Go to Home</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+

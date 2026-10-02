@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="call-page form-card">
+  <h1>📞 Voice Call</h1>
+  <p class="muted">Call with <strong>{{ other_name }}</strong></p>
+  <p class="security">
+    🔒 Peer-to-peer WebRTC audio call. Your phone number is kept completely private.
+  </p>
+  
+  <div class="callbox" style="text-align: center; padding: 24px; background: var(--bg-soft); border-radius: 16px; margin: 20px 0;">
+    <div id="status" class="badge" style="font-size: 1rem; padding: 10px 18px; margin-bottom: 16px; display: inline-block;">
+      Ready to connect
+    </div>
+    <div class="row" style="justify-content: center; gap: 14px;">
+      <button id="start" class="primary" type="button">📞 Start / Join Call</button>
+      <button id="hang" class="danger" type="button">✕ Hang Up</button>
+    </div>
+    <audio id="remote" autoplay playsinline></audio>
+  </div>
+  <p><a href="javascript:history.back()" class="details">← Return to Previous Page</a></p>
+</div>
+
+<script>
+  const room = {{ room_key|tojson }};
+  const me = {{ current_user['id'] }};
+  const other = {{ other_id }};
+  let pc = null;
+  let stream = null;
+  let seenCandidates = 0;
+  const cfg = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+  const statusEl = document.getElementById('status');
+  const startBtn = document.getElementById('start');
+  const hangBtn = document.getElementById('hang');
+
+  async function setup() {
+    if (pc) return pc;
+    pc = new RTCPeerConnection(cfg);
+    
+    pc.onicecandidate = e => {
+      if (e.candidate) {
+        fetch(`/api/call/${encodeURIComponent(room)}/candidate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ candidate: e.candidate })
+        }).catch(err => console.error('Candidate post error:', err));
+      }
+    };
+
+    pc.ontrack = e => {
+      const remote = document.getElementById('remote');
+      remote.srcObject = e.streams[0];
+      remote.play().catch(err => console.log('Autoplay error handled:', err));
+      statusEl.textContent = 'Connected • In Call';
+    };
+
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      stream.getTracks().forEach(t => pc.addTrack(t, stream));
+    } catch (err) {
+      statusEl.textContent = 'Microphone access denied or not available';
+      throw err;
+    }
+    return pc;
+  }
+
+  async function poll() {
+    if (!pc) return;
+    try {
+      const r = await fetch(`/api/call/${encodeURIComponent(room)}/state`, { cache: 'no-store' });
+      if (!r.ok) return;
+      const s = await r.json();
+      if (s.error) return;
+
+      if (s.status === 'ENDED') {
+        statusEl.textContent = 'Call ended';
+        cleanup();
+        return;
+      }
+
+      if (s.mine_is_caller) {
+        if (s.answer && !pc.currentRemoteDescription) {
+          await pc.setRemoteDescription(JSON.parse(s.answer));
+          statusEl.textContent = 'Connected • In Call';
+        }
+      } else {
+        if (s.offer && !pc.currentRemoteDescription) {
+          statusEl.textContent = 'Incoming offer, answering...';
+          await pc.setRemoteDescription(JSON.parse(s.offer));
+          const a = await pc.createAnswer();
+          await pc.setLocalDescription(a);
+          await fetch(`/api/call/${encodeURIComponent(room)}/answer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ answer: JSON.stringify(a) })
+          });
+          statusEl.textContent = 'Connected • In Call';
+        }
+      }
+
+      const cands = Array.isArray(s.other_candidates) ? s.other_candidates : [];
+      while (seenCandidates < cands.length) {
+        const c = cands[seenCandidates++];
+        try {
+          await pc.addIceCandidate(c);
+        } catch (e) {
+          console.warn('ICE candidate error:', e);
+        }
+      }
+    } catch (err) {
+      console.error('Poll error:', err);
+    }
+  }
+
+  async function start() {
+    try {
+      startBtn.disabled = true;
+      statusEl.textContent = 'Requesting microphone...';
+      await setup();
+      statusEl.textContent = 'Connecting...';
+
+      const r = await fetch(`/api/call/${encodeURIComponent(room)}/state`, { cache: 'no-store' });
+      const s = await r.json();
+
+      if (s.mine_is_caller) {
+        const o = await pc.createOffer();
+        await pc.setLocalDescription(o);
+        await fetch(`/api/call/${encodeURIComponent(room)}/offer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ offer: JSON.stringify(o) })
+        });
+        statusEl.textContent = 'Ringing... Waiting for other participant';
+      } else {
+        statusEl.textContent = 'Listening for incoming call...';
+      }
+    } catch (err) {
+      console.error('Call start error:', err);
+      statusEl.textContent = 'Could not start call. Check microphone permissions.';
+    } finally {
+      startBtn.disabled = false;
+    }
+  }
+
+  async function hang() {
+    try {
+      await fetch(`/api/call/${encodeURIComponent(room)}/hangup`, { method: 'POST' });
+    } catch (e) {}
+    cleanup();
+    statusEl.textContent = 'Call ended';
+  }
+
+  function cleanup() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+    if (pc) {
+      pc.close();
+      pc = null;
+    }
+    seenCandidates = 0;
+  }
+
+  startBtn.onclick = start;
+  hangBtn.onclick = hang;
+  setInterval(poll, 1500);
+  window.onbeforeunload = () => cleanup();
+</script>
+{% endblock %}
+

@@ -1,0 +1,66 @@
+{% extends 'base.html' %}{% block content %}
+<div class="form-card">
+  <h1>List an item</h1>
+  <p class="muted">
+    Your phone number stays private. Buyers use in-app chat to contact you.
+  </p>
+  <form method="post" enctype="multipart/form-data" class="form">
+    <label>Product name<input name="title" required /></label>
+    <label
+      >Category
+      <select name="category">
+        <option>Books</option>
+        <option>Calculators</option>
+        <option>Study Materials</option>
+        <option>Electronics</option>
+        <option>Stationery</option>
+        <option>Other</option>
+      </select>
+    </label>
+    <label
+      >Listing type
+      <select name="listing_type">
+        <option>SELL</option>
+        <option>FREE</option>
+        <option>EXCHANGE</option>
+      </select>
+    </label>
+    <label
+      >Price (₹)<input type="number" name="price" min="0" value="0"
+    /></label>
+    <label
+      >Exchange for<input name="exchange_for" placeholder="Only for EXCHANGE"
+    /></label>
+    <label>Department<input name="department" placeholder="CSE" /></label>
+    <label
+      >Semester<input type="number" name="semester" min="1" max="8"
+    /></label>
+    <label>Subject<input name="subject" placeholder="Data Structures" /></label>
+    <label
+      >Subject code<input name="subject_code" placeholder="CS25C10"
+    /></label>
+    <label
+      >Condition
+      <select name="condition">
+        <option>Like New</option>
+        <option>Good</option>
+        <option>Used</option>
+        <option>Fair</option>
+        <option>Damaged</option>
+      </select>
+    </label>
+    <label
+      >Quantity<input type="number" name="quantity" min="1" value="1"
+    /></label>
+    <label>Description<textarea name="description" rows="4"></textarea></label>
+    <label
+      >Photo<input
+        type="file"
+        name="photo"
+        accept=".jpg,.jpeg,.png,.webp"
+        required
+    /></label>
+    <button class="primary">Publish</button>
+  </form>
+</div>
+{% endblock %}

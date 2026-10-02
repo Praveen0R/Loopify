@@ -1,0 +1,29 @@
+{% extends 'base.html' %}{% block content %}
+<section class="hero compact-hero">
+  <div>
+    <p class="eyebrow">MESSAGES</p>
+    <h1>Chats</h1>
+    <p>Buyer and seller conversations stay in one place.</p>
+  </div>
+</section>
+
+<div class="chat-list">
+  {% for c in conversations %}
+  <article class="chat-item">
+    <div class="avatar small">{{c['other_name'][0]|upper}}</div>
+    <div class="chat-details">
+      <div class="chat-header-row">
+        <h3>{{c['other_name']}}</h3>
+        <span class="chat-tag">Conversation</span>
+      </div>
+      <p class="muted">Listing: {{c['title']}}</p>
+    </div>
+    <a class="details" href="{{url_for('chat',cid=c['id'])}}">Open chat</a>
+  </article>
+  {% else %}
+  <div class="empty">
+    No conversations yet. Open a product and press Chat to start one.
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,120 @@
+{% extends 'base.html' %}{% block content %}
+<div class="detail">
+  <a href="{{url_for('index')}}">← Back</a>
+  <div class="detail-card">
+    {% if product['photo'] %}<img
+      class="detail-photo"
+      src="{{url_for('static',filename='uploads/'+product['photo'])}}"
+    />{% endif %}
+    <div class="badge">{{product['category']}}</div>
+    <h1>{{product['title']}}</h1>
+    <p class="muted">
+      {{product['department'] or ''}} {% if product['semester'] %}• Semester
+      {{product['semester']}}{% endif %} {% if product['subject'] %}•
+      {{product['subject']}}{% endif %} {% if product['subject_code'] %}•
+      {{product['subject_code']}}{% endif %}
+    </p>
+    <p>{{product['description'] or ''}}</p>
+    <div class="price">
+      {% if product['price']==0 or product['listing_type']=='FREE' %}FREE{% else
+      %}₹{{product['price']}}{% endif %}
+    </div>
+    <div class="rating">
+      ★ {{'%.1f'|format(product['avg_rating'])}} ({{product['rating_count']}})
+    </div>
+    {% if product['quantity']>0 %}
+    <p class="in stock">✓ AVAILABLE — {{product['quantity']}}</p>
+    {% else %}
+    <p class="out stock">OUT OF STOCK</p>
+    {% endif %}
+    <p>
+      <strong>Seller:</strong>
+      <a href="{{url_for('profile',uid=product['owner_id'])}}"
+        >{{product['owner_name']}}</a
+      >
+    </p>
+    <p class="privacy">
+      🔒 Seller phone number is hidden. Contact is through in-app chat.
+    </p>
+    {% if current_user %} {% if current_user['id']!=product['owner_id'] %}
+    <div class="row">
+      {% if product['quantity']>0 %}
+      <form
+        method="post"
+        action="{{url_for('request_reservation',pid=product['id'])}}"
+      >
+        <button class="primary">Request Reservation</button>
+      </form>
+      {% endif %}
+      <form method="post" action="{{url_for('chat_start',pid=product['id'])}}">
+        <button class="secondary">💬 Chat</button>
+      </form>
+      <a class="secondary" href="{{url_for('call_page',uid=product['owner_id'])}}">📞 Call</a>
+      <a
+        class="danger-link"
+        href="{{url_for('new_complaint',accused_id=product['owner_id'],product_id=product['id'])}}"
+        >Report</a
+      >
+    </div>
+    {% if my_reservation and my_reservation['status']=='COMPLETED' %}
+    <div class="inline">
+      <h3>Rate product</h3>
+      <form
+        method="post"
+        action="{{url_for('rate',pid=product['id'])}}"
+        class="form"
+      >
+        <select name="rating" required>
+          <option value="">Stars</option>
+          <option value="5">★★★★★</option>
+          <option value="4">★★★★</option>
+          <option value="3">★★★</option>
+          <option value="2">★★</option>
+          <option value="1">★</option></select
+        ><textarea name="review" placeholder="Review"></textarea
+        ><button class="primary">Submit Rating</button>
+      </form>
+    </div>
+    {% endif %} {% endif %} {% else %}
+    <div class="row">
+      <a class="primary" href="{{url_for('login')}}">Login to chat & buy</a>
+    </div>
+    {% endif %}
+  </div>
+  <h2>Reviews</h2>
+  {% for r in reviews %}
+  <div class="review">
+    <b>{{r['name']}}</b> <span class="stars">{{'★'*r['rating']}}</span>
+    <p>{{r['review'] or ''}}</p>
+  </div>
+  {% else %}
+  <p class="muted">No reviews yet.</p>
+  {% endfor %}
+  <h2>Other listings of the same product</h2>
+  <div class="grid">
+    {% for p in same_items %}
+    <article class="card">
+      {% set related_image = p['photo'] or p['image'] %} {% if related_image %}
+      <img
+        src="{{url_for('static',filename='uploads/'+related_image)}}"
+        alt="{{p['title']}}"
+      />
+      {% endif %}
+      <div class="card-body">
+        <h3>{{p['title']}}</h3>
+        <p>{{p['owner_name']}}</p>
+        <div class="price">
+          {% if p['price']==0 %}FREE{% else %}₹{{p['price']}}{% endif %}
+        </div>
+        {% if p['quantity']>0 %}
+        <div class="in stock">Available</div>
+        {% else %}
+        <div class="out stock">OUT OF STOCK</div>
+        {% endif %}
+        <a class="details" href="{{url_for('product',pid=p['id'])}}">Open</a>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

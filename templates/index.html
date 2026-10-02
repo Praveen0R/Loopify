@@ -1,0 +1,188 @@
+{% extends 'base.html' %} {% block content %}
+
+<section class="hero">
+  <h1>Loopify</h1>
+  <p>Buy, sell, or give away useful items within your campus community.</p>
+</section>
+
+<form class="search-panel" method="get" action="{{ url_for('index') }}">
+  <div class="search-field">
+    <label for="q">Search</label>
+    <input
+      id="q"
+      type="text"
+      name="q"
+      value="{{ q or '' }}"
+      placeholder="Search subject, subject code, or item"
+    />
+  </div>
+
+  <div class="search-field">
+    <label for="department">Department</label>
+    <select id="department" name="department">
+      <option value="">All Departments</option>
+      {% for d in departments %}
+      <option
+        value="{{ d }}"
+        {{ 'selected' if d == selected_department else '' }}
+      >
+        {{ d }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="search-field">
+    <label for="semester">Semester</label>
+    <select id="semester" name="semester">
+      <option value="">All Semesters</option>
+      {% for s in range(1, 9) %}
+      <option
+        value="{{ s }}"
+        {{ 'selected' if selected_semester == (s|string) else '' }}
+      >
+        Semester {{ s }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="search-field">
+    <label for="category">Category</label>
+    <select id="category" name="category">
+      <option value="">All Categories</option>
+      {% for c in categories %}
+      <option
+        value="{{ c }}"
+        {{ 'selected' if c == selected_category else '' }}
+      >
+        {{ c }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="search-action">
+    <button class="primary" type="submit">Search</button>
+  </div>
+</form>
+
+{% if recommended_products and not (q or selected_department or selected_semester or subject_code or selected_category) %}
+<div class="section-block" style="margin-bottom: 28px;">
+  <div class="section-head">
+    <h2>Recommended For You 🎓</h2>
+    <p class="muted">Items matching your department and semester</p>
+  </div>
+  <div class="grid">
+    {% for p in recommended_products %}
+    <article class="card">
+      {% if p['photo'] %}
+      <img src="{{ url_for('static', filename='uploads/' ~ p['photo']) }}" alt="{{ p['title'] }}" />
+      {% else %}
+      <div class="placeholder">♻</div>
+      {% endif %}
+      <div class="card-body">
+        <div class="meta-row">
+          <span class="chip">{{ p['category'] }}</span>
+          {% if p['price'] == 0 or p['listing_type'] == 'FREE' %}<span class="chip chip-free">FREE</span>{% endif %}
+        </div>
+        <h3>{{ p['title'] }}</h3>
+        {% if p['subject'] %}<p class="muted">{{ p['subject'] }}</p>{% endif %}
+        <p><strong>{% if p['price'] == 0 or p['listing_type'] == 'FREE' %}FREE{% else %}₹{{ p['price'] }}{% endif %}</strong></p>
+        <span class="stock in">{{ p['quantity'] }} available</span>
+        <div class="card-actions">
+          <a class="primary" href="{{ url_for('product', pid=p['id']) }}">View Item</a>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if free_products and not (q or selected_department or selected_semester or subject_code or selected_category) %}
+<div class="section-block" style="margin-bottom: 28px;">
+  <div class="section-head">
+    <h2>Free Academic Giveaways ♻</h2>
+    <p class="muted">Free reusable materials from your college peers</p>
+  </div>
+  <div class="grid">
+    {% for p in free_products %}
+    <article class="card">
+      {% if p['photo'] %}
+      <img src="{{ url_for('static', filename='uploads/' ~ p['photo']) }}" alt="{{ p['title'] }}" />
+      {% else %}
+      <div class="placeholder">♻</div>
+      {% endif %}
+      <div class="card-body">
+        <div class="meta-row">
+          <span class="chip">{{ p['category'] }}</span>
+          <span class="chip chip-free">FREE</span>
+        </div>
+        <h3>{{ p['title'] }}</h3>
+        <p><strong>FREE</strong></p>
+        <span class="stock in">{{ p['quantity'] }} available</span>
+        <div class="card-actions">
+          <a class="primary" href="{{ url_for('product', pid=p['id']) }}">View Item</a>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="section-head">
+  <h2>All Campus Listings</h2>
+</div>
+<div class="grid">
+  {% for p in products %}
+  <article class="card">
+    {% set product_image = p['photo'] or p['image'] %}
+    {% if product_image %}
+    <img
+      src="{{ url_for('static', filename='uploads/' ~ product_image) }}"
+      alt="{{ p['title'] }}"
+    />
+    {% else %}
+    <div class="placeholder">♻</div>
+    {% endif %}
+
+    <div class="card-body">
+      <div class="meta-row">
+        <span class="chip">{{ p['category'] }}</span>
+        {% if p['price'] == 0 or p['listing_type'] == 'FREE' %}<span class="chip chip-free">FREE</span>{% endif %}
+      </div>
+      <h3>{{ p['title'] }}</h3>
+
+      {% if p['subject_code'] %}
+      <p class="muted">Subject Code: {{ p['subject_code'] }}</p>
+      {% endif %} {% if p['subject'] %}
+      <p class="muted">Subject: {{ p['subject'] }}</p>
+      {% endif %} {% if p['department'] %}
+      <p class="muted">Department: {{ p['department'] }}</p>
+      {% endif %}
+
+      <p>{{ p['description'] }}</p>
+
+      <p><strong>{% if p['price'] == 0 or p['listing_type'] == 'FREE' %}FREE{% else %}₹{{ p['price'] }}{% endif %}</strong></p>
+
+      {% if p['quantity']|int <= 0 %}
+      <span class="stock out">OUT OF STOCK</span>
+      {% else %}
+      <span class="stock in">{{ p['quantity'] }} available</span>
+      {% endif %}
+
+      <div class="card-actions">
+        <a class="primary" href="{{ url_for('product', pid=p['id']) }}"
+          >View Item</a
+        >
+      </div>
+    </div>
+  </article>
+  {% else %}
+  <p>No items found.</p>
+  {% endfor %}
+</div>
+
+{% endblock %}

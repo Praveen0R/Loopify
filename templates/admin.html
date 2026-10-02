@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow">ADMIN</p>
+    <h1>Loopify Dashboard</h1>
+  </div>
+</section>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <span class="stat-label">Users</span>
+    <strong>{{ stats['users'] }}</strong>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Products</span>
+    <strong>{{ stats['products'] }}</strong>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Out of stock</span>
+    <strong>{{ stats['out'] }}</strong>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Open complaints</span>
+    <strong>{{ stats['complaints'] }}</strong>
+  </div>
+</div>
+
+<div class="admin-shell">
+  <section class="admin-panel">
+    <div class="panel-head">
+      <h2>Users</h2>
+      <span class="panel-badge">{{ users|length }}</span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Department</th>
+            <th>Role</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td>{{ u['id'] }}</td>
+            <td>{{ u['name'] }}</td>
+            <td>{{ u['email'] }}</td>
+            <td>{{ u['phone'] }}</td>
+            <td>{{ u['department'] or '—' }}</td>
+            <td>
+              <span class="role-pill {{ u['role'] }}">{{ u['role'] }}</span>
+            </td>
+            <td>
+              {% if u['id'] != current_user['id'] %}
+              <form
+                method="post"
+                action="{{ url_for('admin_delete_user', uid=u['id']) }}"
+                onsubmit="return confirm('Are you sure you want to delete this user?');"
+              >
+                <button class="danger" type="submit">Delete</button>
+              </form>
+              {% else %}
+              <span class="muted-inline">Current</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="admin-panel">
+    <div class="panel-head">
+      <h2>Products</h2>
+      <span class="panel-badge">{{ products|length }}</span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Product</th>
+            <th>Owner</th>
+            <th>Price</th>
+            <th>Qty</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in products %}
+          <tr>
+            <td>{{ p['id'] }}</td>
+            <td>{{ p['title'] }}</td>
+            <td>{{ p['owner_name'] }}</td>
+            <td>₹{{ p['price'] }}</td>
+            <td>{{ p['quantity'] }}</td>
+            <td>
+              <form
+                method="post"
+                action="{{ url_for('admin_delete_product', pid=p['id']) }}"
+                onsubmit="return confirm('Are you sure you want to delete this product?');"
+              >
+                <button class="danger" type="submit">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="admin-panel">
+    <div class="panel-head">
+      <h2>Complaint Team Members</h2>
+      <a class="primary" href="{{ url_for('create_team_member') }}"
+        >+ Create Team Member</a
+      >
+    </div>
+
+    <div class="table-wrap">
+      <table class="admin-table compact-table">
+        <thead>
+          <tr>
+            <th>Member ID</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in team %}
+          <tr>
+            <td>{{ t['member_id'] }}</td>
+            <td>{{ t['name'] }}</td>
+            <td>{{ t['phone'] }}</td>
+            <td>{{ t['created_at'] }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="4" class="empty-cell">
+              No complaint team members yet.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

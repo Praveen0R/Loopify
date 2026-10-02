@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero compact-hero">
+  <div>
+    <p class="eyebrow">TRANSACTIONS</p>
+    <h1>Reservations</h1>
+    <p>Buyers track item requests. Sellers approve, reject, or confirm completed sales.</p>
+  </div>
+</section>
+
+<div class="grid">
+  <section class="admin">
+    <h2>My Requests (Buying)</h2>
+    {% for r in buyer_reservations %}
+    <div class="review">
+      <strong>{{ r['title'] }}</strong>
+      <p>Seller: <b>{{ r['seller_name'] }}</b><br>Quantity: {{ r['quantity'] }}</p>
+      <p>Status: <b class="stock {% if r['status'] in ['ACCEPTED','COMPLETED'] %}in{% elif r['status']=='REJECTED' %}out{% endif %}">{{ r['status'] }}</b></p>
+      
+      {% if r['seller_note'] %}
+      <p style="background: var(--bg-soft); padding: 8px 12px; border-radius: 8px; font-size: 0.88rem;">
+        <strong>Seller Note:</strong> {{ r['seller_note'] }}
+      </p>
+      {% endif %}
+
+      {% if r['status'] == 'PENDING' %}
+      <span class="notice">⏳ Waiting for seller approval.</span>
+      {% elif r['status'] == 'ACCEPTED' %}
+      <span class="notice" style="color: var(--success); font-weight: bold;">✓ Accepted. Your item is reserved!</span>
+      <div class="row" style="margin-top: 8px;">
+        <a class="primary" href="{{ url_for('product', pid=r['product_id']) }}">View Product & Chat</a>
+      </div>
+      {% elif r['status'] == 'REJECTED' %}
+      <span class="notice" style="color: var(--danger);">✕ Request was rejected.</span>
+      {% elif r['status'] == 'COMPLETED' %}
+      <span class="notice" style="color: var(--success);">✓ Sale completed. You can now rate this item on its product page.</span>
+      <p><a class="details" href="{{ url_for('product', pid=r['product_id']) }}">Rate Item</a></p>
+      {% endif %}
+    </div>
+    {% else %}
+    <p class="muted">No reservation requests yet.</p>
+    {% endfor %}
+  </section>
+
+  <section class="admin">
+    <h2>Incoming Requests (Selling)</h2>
+    {% for r in seller_reservations %}
+    <div class="review">
+      <strong>{{ r['title'] }}</strong>
+      <p>Buyer: <b>{{ r['buyer_name'] }}</b><br>Quantity: {{ r['quantity'] }}</p>
+      <p>Status: <b class="stock {% if r['status'] in ['ACCEPTED','COMPLETED'] %}in{% elif r['status']=='REJECTED' %}out{% endif %}">{{ r['status'] }}</b></p>
+      
+      {% if r['seller_note'] %}
+      <p style="background: var(--bg-soft); padding: 8px 12px; border-radius: 8px; font-size: 0.88rem;">
+        <strong>Your Note:</strong> {{ r['seller_note'] }}
+      </p>
+      {% endif %}
+
+      {% if r['status'] == 'PENDING' %}
+      <form method="post" action="{{ url_for('accept_reservation', rid=r['id']) }}" class="form" style="margin-top: 8px;">
+        <input name="seller_note" placeholder="Meeting location/time (optional)">
+        <button class="primary" type="submit">Accept Request</button>
+      </form>
+      <form method="post" action="{{ url_for('reject_reservation', rid=r['id']) }}" class="form">
+        <input name="seller_note" placeholder="Reason for rejection (optional)">
+        <button class="danger" type="submit">Reject</button>
+      </form>
+      {% elif r['status'] == 'ACCEPTED' %}
+      <form method="post" action="{{ url_for('complete_reservation', rid=r['id']) }}" style="margin-top: 8px;">
+        <button class="primary" type="submit">✓ Confirm Sale Completed</button>
+      </form>
+      {% endif %}
+    </div>
+    {% else %}
+    <p class="muted">No incoming requests.</p>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}
